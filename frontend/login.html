@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Auto24 — Вход</title>
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="login-wrap">
+  <div class="login-card">
+    <div class="login-title">Auto24 · Автошкола</div>
+
+    <div class="role-switch">
+      <button id="tabAdmin" class="active" onclick="switchRole('admin')">Администратор</button>
+      <button id="tabInstructor" onclick="switchRole('instructor')">Инструктор</button>
+    </div>
+
+    <!-- Форма администратора -->
+    <form id="adminForm">
+      <label>Пароль администратора</label>
+      <input type="password" id="adminPassword" required>
+      <button type="submit" class="primary" style="width:100%; margin-top:16px; justify-content:center;">Войти</button>
+    </form>
+
+    <!-- Форма инструктора -->
+    <form id="instructorForm" style="display:none;">
+      <label>ID инструктора</label>
+      <input type="number" id="instructorId" required>
+      <label>Пароль</label>
+      <input type="password" id="instructorPassword" required>
+      <button type="submit" class="primary" style="width:100%; margin-top:16px; justify-content:center;">Войти</button>
+    </form>
+  </div>
+</div>
+
+<script src="/static/js/auth.js"></script>
+<script>
+function switchRole(role) {
+  document.getElementById("tabAdmin").classList.toggle("active", role === "admin");
+  document.getElementById("tabInstructor").classList.toggle("active", role === "instructor");
+  document.getElementById("adminForm").style.display = role === "admin" ? "block" : "none";
+  document.getElementById("instructorForm").style.display = role === "instructor" ? "block" : "none";
+}
+
+document.getElementById("adminForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const password = document.getElementById("adminPassword").value;
+  const body = new URLSearchParams({ password });
+
+  const res = await fetch("/admin/login", { method: "POST", body });
+  const data = await res.json();
+
+  if (!res.ok) {
+    showToast(data.detail || "Ошибка входа", "error");
+    return;
+  }
+  saveSession(data.token, "admin");
+  window.location.href = "/app/admin/dashboard.html";
+});
+
+document.getElementById("instructorForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const instructor_id = document.getElementById("instructorId").value;
+  const password = document.getElementById("instructorPassword").value;
+  const body = new URLSearchParams({ instructor_id, password });
+
+  const res = await fetch("/instructors/login", { method: "POST", body });
+  const data = await res.json();
+
+  if (!res.ok) {
+    showToast(data.detail || "Ошибка входа", "error");
+    return;
+  }
+  saveSession(data.token, "instructor", data.instructor_id);
+  window.location.href = "/app/instructor/dashboard.html";
+});
+
+// Если уже авторизован — сразу перекинуть на нужную панель
+(function () {
+  const role = getRole();
+  if (getToken() && role === "admin") window.location.href = "/app/admin/dashboard.html";
+  if (getToken() && role === "instructor") window.location.href = "/app/instructor/dashboard.html";
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Auto24 · Панель администратора</title>
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">Auto24 <span>· Админ</span></div>
+  <div class="topbar-right">
+    <span class="role-badge">Администратор</span>
+    <button class="btn ghost small" id="logoutBtn">Выйти</button>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="students">Ученики</button>
+    <button class="tab-btn" data-tab="instructors">Инструкторы</button>
+    <button class="tab-btn" data-tab="branches">Отделения</button>
+  </div>
+
+  <!-- ── Ученики ── -->
+  <div class="tab-panel active" id="tab-students">
+    <div class="card">
+      <div class="card-title" style="margin-bottom:10px;">Добавить ученика</div>
+      <form id="createStudentForm">
+        <label>ФИО ученика</label>
+        <input type="text" id="newStudentName" required>
+        <label>Количество занятий по договору</label>
+        <input type="number" id="newStudentLessons" min="1" required>
+        <button type="submit" class="primary" style="margin-top:14px;">Добавить</button>
+      </form>
+    </div>
+    <div id="studentsList"></div>
+  </div>
+
+  <!-- ── Инструкторы ── -->
+  <div class="tab-panel" id="tab-instructors">
+    <div class="card">
+      <div class="card-title" style="margin-bottom:10px;">Добавить инструктора</div>
+      <form id="createInstructorForm" enctype="multipart/form-data">
+        <label>ФИО</label>
+        <input type="text" name="full_name" required>
+
+        <label>Отделение</label>
+        <select id="newInstructorBranch" name="branch_id" required></select>
+
+        <label>Модель автомобиля</label>
+        <input type="text" name="car_model" placeholder="Например: Renault Duster" required>
+
+        <label>Коробка передач</label>
+        <select name="transmission_type" required>
+          <option value="manual">МКПП</option>
+          <option value="automatic">АКПП</option>
+        </select>
+
+        <label>За рулём с (год)</label>
+        <input type="number" name="driving_since" min="1970" max="2026" required>
+
+        <label>Инструктор с (год)</label>
+        <input type="number" name="instructor_since" min="1970" max="2026" required>
+
+        <label>Пароль для входа в панель инструктора</label>
+        <input type="password" name="password" required>
+
+        <label>Фото</label>
+        <input type="file" name="photo" accept="image/*" required>
+
+        <button type="submit" class="primary" style="margin-top:14px;">Добавить инструктора</button>
+      </form>
+    </div>
+    <div id="instructorsList"></div>
+  </div>
+
+  <!-- ── Отделения ── -->
+  <div class="tab-panel" id="tab-branches">
+    <div class="card">
+      <div class="card-title" style="margin-bottom:10px;">Добавить отделение</div>
+      <form id="createBranchForm">
+        <label>Название отделения</label>
+        <input type="text" id="newBranchName" placeholder="Например: Бибирево" required>
+        <button type="submit" class="primary" style="margin-top:14px;">Добавить</button>
+      </form>
+    </div>
+    <div id="branchesList"></div>
+  </div>
+
+</div>
+
+<script src="/static/js/auth.js"></script>
+<script src="/static/js/admin-students.js"></script>
+<script src="/static/js/admin-instructors.js"></script>
+<script src="/static/js/admin-branches.js"></script>
+<script src="/static/js/admin.js"></script>
+</body>
+</html>
