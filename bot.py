@@ -18,7 +18,7 @@ from keyboards import (
 
 load_dotenv()
 TOKEN = os.getenv("BOT_TOKEN")
-API_URL = "http://127.0.0.1:8000"
+API_URL = os.getenv("API_URL", "http://127.0.0.1:8000")
 
 router = Router()
 
