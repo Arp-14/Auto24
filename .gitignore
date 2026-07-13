@@ -1,0 +1,27 @@
+# Виртуальное окружение
+venv/
+env/
+.venv/
+
+# Переменные окружения (токены, пароли — никогда не пушим!)
+.env
+
+# Python кэш
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# База данных SQLite (у нас PostgreSQL, но на всякий)
+*.db
+*.sqlite3
+
+# Фото инструкторов (тяжёлые файлы, не нужны в репо)
+photos/
+
+# VS Code
+.vscode/
+
+# Windows мусор
+Thumbs.db
+desktop.ini
