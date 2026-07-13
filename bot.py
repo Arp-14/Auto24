@@ -81,6 +81,7 @@ async def process_key(message: Message, state: FSMContext):
                 "telegram_id": str(message.from_user.id)
             })
             student = response.json()
+            print(f"DEBUG identify response: {student}")  
     except Exception:
         await message.answer("Ошибка соединения с сервером. Попробуйте позже.")
         return
