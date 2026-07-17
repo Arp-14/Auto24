@@ -5,10 +5,13 @@ from models import Slot, Student, Instructor
 from schemas import RejectBooking, UpdateDefaultMessage
 from .auth_simple import create_session, require_admin, require_instructor, ADMIN_PASSWORD
 import datetime as dt
+import os
+import httpx
 import secrets
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 @router.post("/login")
 def admin_login(password: str = Form(...)):
@@ -17,8 +20,18 @@ def admin_login(password: str = Form(...)):
     token = create_session("admin")
     return {"token": token, "role": "admin"}
 
+async def notify_student(telegram_id: str, text: str):
+    if not telegram_id or not BOT_TOKEN:
+        return
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            await client.post(url, json={"chat_id": telegram_id, "text": text})
+    except Exception:
+        pass
 
-# ── Заявки инструктора (доступно только самому инструктору) ──
+
+# Заявки инструктора (доступно только самому инструктору)
 
 @router.get("/pending/{instructor_id}")
 def get_pending(instructor_id: int, db: Session = Depends(get_db), session: dict = Depends(require_instructor)):
@@ -40,31 +53,78 @@ def get_pending(instructor_id: int, db: Session = Depends(get_db), session: dict
     return result
 
 
+@router.post("/slots/{slot_id}/complete")
+def complete_lesson(slot_id: int, db: Session = Depends(get_db), session: dict = Depends(require_instructor)):
+    slot = db.query(Slot).filter(Slot.id == slot_id).first()
+    if not slot:
+        raise HTTPException(status_code=404, detail="Слот не найден")
+    if slot.status != "confirmed":
+        raise HTTPException(status_code=400, detail="Отметить можно только подтверждённое занятие")
+
+    student = db.query(Student).filter(Student.id == slot.booked_by_student_id).first()
+    if student:
+        student.used_lessons += 1
+
+    slot.status = "completed"
+    db.commit()
+    return {"message": "Занятие отмечено как пройденное"}
+
+
+@router.post("/slots/{slot_id}/no-show")
+def mark_no_show(slot_id: int, db: Session = Depends(get_db), session: dict = Depends(require_instructor)):
+    slot = db.query(Slot).filter(Slot.id == slot_id).first()
+    if not slot:
+        raise HTTPException(status_code=404, detail="Слот не найден")
+
+    student = db.query(Student).filter(Student.id == slot.booked_by_student_id).first()
+    if student:
+        student.used_lessons += 1
+
+    slot.status = "no_show"
+    db.commit()
+    return {"message": "Отмечено как неявка, занятие списано"}
+
+
 @router.post("/confirm/{slot_id}")
-def confirm_slot(slot_id: int, db: Session = Depends(get_db), session: dict = Depends(require_instructor)):
+async def confirm_slot(slot_id: int, db: Session = Depends(get_db), session: dict = Depends(require_instructor)):
     slot = db.query(Slot).filter(Slot.id == slot_id).first()
     if not slot:
         raise HTTPException(status_code=404, detail="Слот не найден")
     slot.status = "confirmed"
     db.commit()
-    # TODO: уведомить студента через бота
+
+    if slot.booked_by_student_id:
+        student = db.query(Student).filter(Student.id == slot.booked_by_student_id).first()
+        if student and student.telegram_id:
+            await notify_student(
+                student.telegram_id,
+                f"✅ Ваша запись на {slot.date.strftime('%d.%m.%Y')} в {slot.time.strftime('%H:%M')} подтверждена инструктором!"
+            )
     return {"message": "Запись подтверждена"}
 
 
 @router.post("/reject/{slot_id}")
-def reject_slot(slot_id: int, data: RejectBooking, db: Session = Depends(get_db), session: dict = Depends(require_instructor)):
+async def reject_slot(slot_id: int, data: RejectBooking, db: Session = Depends(get_db), session: dict = Depends(require_instructor)):
     slot = db.query(Slot).filter(Slot.id == slot_id).first()
     if not slot:
         raise HTTPException(status_code=404, detail="Слот не найден")
 
     instructor = db.query(Instructor).filter(Instructor.id == slot.instructor_id).first()
     message = data.message or instructor.default_reject_message
+    student_id = slot.booked_by_student_id
 
     slot.is_booked = False
     slot.status = "free"
     slot.booked_by_student_id = None
     db.commit()
-    # TODO: уведомить студента через бота с текстом message
+
+    if student_id:
+        student = db.query(Student).filter(Student.id == student_id).first()
+        if student and student.telegram_id:
+            await notify_student(
+                student.telegram_id,
+                f"❌ Ваша запись на {slot.date.strftime('%d.%m.%Y')} в {slot.time.strftime('%H:%M')} отменена.\n{message}"
+            )
     return {"message": "Запись отклонена", "sent_message": message}
 
 
@@ -198,3 +258,12 @@ def reset_telegram(student_id: int, db: Session = Depends(get_db), admin: dict =
     student.telegram_id = None
     db.commit()
     return {"message": "Telegram отвязан, ученик может привязаться заново"}
+
+@router.post("/students/{student_id}/add-lessons")
+def add_lessons(student_id: int, amount: int = Form(...), db: Session = Depends(get_db), admin: dict = Depends(require_admin)):
+    student = db.query(Student).filter(Student.id == student_id).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Студент не найден")
+    student.total_lessons += amount
+    db.commit()
+    return {"message": f"Добавлено {amount} занятий", "total_lessons": student.total_lessons}

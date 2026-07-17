@@ -167,11 +167,20 @@ async function loadSchedule() {
     const isPast  = d < new Date(getMonday(0));
 
     const slotRows = slots.sort((a,b) => a.time.localeCompare(b.time)).map(s => {
-      let badge = '', info = '', delBtn = '';
-      if (s.is_booked) {
+      let badge = '', info = '', delBtn = '', actionBtns = '';
+      if (s.status === 'completed') {
+        badge = `<span class="status-badge badge-completed">Пройдено</span>`;
+        info  = `<div class="student-name">${s.student_name}</div><div class="slot-status-text">Занятие проведено</div>`;
+      } else if (s.status === 'no_show') {
+        badge = `<span class="status-badge badge-noshow">Неявка</span>`;
+        info  = `<div class="student-name">${s.student_name}</div><div class="slot-status-text">Ученик не пришёл</div>`;
+      } else if (s.is_booked) {
         if (s.status === 'confirmed') {
           badge = `<span class="status-badge badge-confirmed">Подтверждено</span>`;
           info  = `<div class="student-name">${s.student_name}</div><div class="slot-status-text">Занято · подтверждено</div>`;
+          actionBtns = `
+            <button class="btn btn-icon btn-green" onclick="completeLesson(${s.id})" title="Отметить пройденным">✓</button>
+            <button class="btn btn-icon btn-red" onclick="markNoShow(${s.id})" title="Отметить неявку">✕</button>`;
         } else {
           badge = `<span class="status-badge badge-pending">Ожидает</span>`;
           info  = `<div class="student-name">${s.student_name}</div><div class="slot-status-text">Ожидает подтверждения</div>`;
@@ -187,7 +196,7 @@ async function loadSchedule() {
         <div class="slot-time">${s.time.slice(0,5)}</div>
         <div class="slot-info">${info}</div>
         ${badge}
-        ${delBtn}
+        <div style="display:flex; gap:6px;">${actionBtns}${delBtn}</div>
       </div>`;
     }).join('');
 
@@ -244,6 +253,27 @@ async function deleteSlot(slotId) {
     return;
   }
   showToastLocal('Слот удалён');
+  loadSchedule();
+}
+
+
+async function completeLesson(slotId) {
+  const result = await post(`/admin/slots/${slotId}/complete`);
+  if (result.detail) {
+    showToastLocal(result.detail, '#ef4444');
+    return;
+  }
+  showToastLocal('Занятие отмечено пройденным ✓');
+  loadSchedule();
+}
+
+async function markNoShow(slotId) {
+  const result = await post(`/admin/slots/${slotId}/no-show`);
+  if (result.detail) {
+    showToastLocal(result.detail, '#ef4444');
+    return;
+  }
+  showToastLocal('Отмечено как неявка', '#f59e0b');
   loadSchedule();
 }
 

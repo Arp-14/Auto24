@@ -3,7 +3,7 @@ from fastapi import Header, HTTPException, Depends
 
 SESSIONS: dict[str, dict] = {}
 
-ADMIN_PASSWORD = "auto24-admin-2026"  # обязательно смени перед деплоем, лучше вынести в .env
+ADMIN_PASSWORD = "2026"  # обязательно смени перед деплоем, лучше вынести в .env
 
 def create_session(role: str, user_id: int | None = None) -> str:
     token = secrets.token_urlsafe(24)

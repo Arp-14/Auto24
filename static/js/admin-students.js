@@ -11,18 +11,24 @@ async function loadStudents() {
   }
 
   container.innerHTML = students.map((s) => `
-    <div class="card card-row" data-id="${s.id}">
-      <div>
-        <div class="card-title">${escapeHtml(s.full_name)}</div>
-        <div class="card-sub">
-          Прогресс: ${s.used_lessons}/${s.total_lessons} занятий ·
-          Telegram: ${s.telegram_id === "не привязан" ? "❌ не привязан" : "✅ привязан"}
+    <div class="card" data-id="${s.id}">
+      <div class="card-row">
+        <div>
+          <div class="card-title">${escapeHtml(s.full_name)}</div>
+          <div class="card-sub">
+            Прогресс: ${s.used_lessons}/${s.total_lessons} занятий ·
+            Telegram: ${s.telegram_id === "не привязан" ? "❌ не привязан" : "✅ привязан"}
+          </div>
+          <div class="card-sub">Ключ: <code>${escapeHtml(s.identification_key)}</code></div>
         </div>
-        <div class="card-sub">Ключ: <code>${escapeHtml(s.identification_key)}</code></div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn ghost small" onclick="resetTelegram(${s.id})">Отвязать Telegram</button>
+          <button class="btn danger small" onclick="deleteStudent(${s.id})">Удалить</button>
+        </div>
       </div>
-      <div style="display:flex; gap:8px;">
-        <button class="btn ghost small" onclick="resetTelegram(${s.id})">Отвязать Telegram</button>
-        <button class="btn danger small" onclick="deleteStudent(${s.id})">Удалить</button>
+      <div style="display:flex; gap:8px; align-items:center; margin-top:12px; padding-top:12px; border-top:1px solid var(--border);">
+        <input type="number" min="1" placeholder="Кол-во занятий" id="addLessons-${s.id}" style="max-width:160px;">
+        <button class="btn small" onclick="addLessons(${s.id})">+ Добавить занятия</button>
       </div>
     </div>
   `).join("");
@@ -59,6 +65,20 @@ async function resetTelegram(id) {
 async function deleteStudent(id) {
   if (!confirm("Удалить ученика без возможности восстановления?")) return;
   const res = await apiFetch(`/admin/students/${id}`, { method: "DELETE" });
+  const data = await res.json();
+  showToast(data.message || "Готово", res.ok ? "success" : "error");
+  if (res.ok) { loadedTabs.delete("students"); openTab("students"); }
+}
+
+async function addLessons(id) {
+  const input = document.getElementById(`addLessons-${id}`);
+  const amount = parseInt(input.value, 10);
+  if (!amount || amount < 1) {
+    showToast("Укажи количество занятий", "error");
+    return;
+  }
+  const body = new URLSearchParams({ amount });
+  const res = await apiFetch(`/admin/students/${id}/add-lessons`, { method: "POST", body });
   const data = await res.json();
   showToast(data.message || "Готово", res.ok ? "success" : "error");
   if (res.ok) { loadedTabs.delete("students"); openTab("students"); }
