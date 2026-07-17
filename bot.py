@@ -5,15 +5,15 @@ import os
 from dotenv import load_dotenv
 
 from aiogram import Bot, Dispatcher, Router, F
-from aiogram.filters import CommandStart
-from aiogram.types import Message, CallbackQuery, FSInputFile, InputMediaPhoto
+from aiogram.filters import CommandStart, Command
+from aiogram.types import Message, CallbackQuery, FSInputFile, InputMediaPhoto, BotCommand, BotCommandScopeAllPrivateChats
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
 
 from states import BookingStates
 from keyboards import (
     branches_keyboard, instructor_card_keyboard, days_keyboard,
-    time_keyboard, main_menu_keyboard
+    time_keyboard, main_menu_keyboard, bookings_menu_keyboard
 )
 
 load_dotenv()
@@ -36,13 +36,13 @@ async def build_main_menu_text(student_id: int) -> str:
     if slot:
         if slot["status"] == "confirmed":
             booking_line = f"📅 Запись на урок: {slot['date']} в {slot['time']} ✅"
-            waiting_line = "⏳ Ожидание подтверждения: нет"
+            waiting_line = "⏳ Статус записи: подтверждено"
         else:
             booking_line = f"📅 Запись на урок: {slot['date']} в {slot['time']}"
-            waiting_line = "⏳ Ожидание подтверждения: да"
+            waiting_line = "⏳ Статус записи: ожидание подтверждения"
     else:
-        booking_line = "📅 Запись на урок: нет"
-        waiting_line = "⏳ Ожидание подтверждения: нет"
+        booking_line = "📅 Запись на урок: отсутсвует"
+        waiting_line = "⏳ Статус записи: запись отсутсвует"
 
     remaining = data["total_lessons"] - data["used_lessons"]
     return (
@@ -50,7 +50,7 @@ async def build_main_menu_text(student_id: int) -> str:
         f"{booking_line}\n"
         f"{waiting_line}\n\n"
         f"🎓 Всего уроков: {data['total_lessons']}\n"
-        f"📊 Неиспользованных уроков: {remaining}\n\n"
+        f"📊 Остаток неиспользованных уроков: {remaining}\n\n"
         f"Выберите действие:"
     )
 
@@ -104,9 +104,78 @@ async def process_key(message: Message, state: FSMContext):
 
 
 # ──────────────────────────────────────────────
+# МЕНЮ КОМАНД
+# ──────────────────────────────────────────────
+@router.message(Command("menu"))
+async def cmd_menu(message: Message ,state: FSMContext):
+    result = await api("get", f"/students/by-telegram/{message.from_user.id}")
+
+    if "detail" in result:
+        await state.set_state(BookingStates.waiting_for_key)
+        await message.answer("Введите ключ идентификации")
+        return
+    
+
+    await state.update_data(student_id=result["id"])
+    await state.set_state(BookingStates.main_menu)
+    await message.answer(await build_main_menu_text(result["id"]), reply_markup=main_menu_keyboard())
+
+# ──────────────────────────────────────────────
+# ОКНО ЗАПИСЕЙ
+# ──────────────────────────────────────────────
+async def build_my_bookings_menu(student_id: int) -> tuple[str, list]:
+    data = await api("get", f"/students/{student_id}/bookings")
+
+    if not data or isinstance(data, dict):
+        return "У вас пока нет записей.\nДобавьте новую — она сразу появится в этом окне.", []
+
+    lines = ["📋 Мои записи:\n\n" "🛑 ВАЖНО! Если вы отменяете запись позденее чем за 24 часа до его проведения это занятие списывается с вашего баланса 🛑\n"]
+    slot_ids = []
+    for i, booking in enumerate(data, start=1):
+        status = "✅ Статус заявки: Подтверждено" if booking["status"] == "confirmed" else "⏳ Статус заявки: Ожидание подтверждения"
+        lines.append(
+            f"{i}. {booking['date']} в {booking['time'][:5]}\n"
+            f" 👨‍🏫 Инструктор: {booking['instructor']}\n"
+            f" 🚗 Машина: {booking['car_model']}\n"
+            f" 🕹️ КПП: {booking['kpp']}\n"
+            f" {status}\n"
+        )
+        slot_ids.append(booking["slot_id"])
+
+    return "\n".join(lines), slot_ids
+
+@router.callback_query(BookingStates.main_menu, F.data == "my_bookings")
+async def my_bookings(callback: CallbackQuery, state: FSMContext):
+    student_id = await get_student_id(state)
+    await state.set_state(BookingStates.bookings_menu)
+
+    text, slot_ids = await build_my_bookings_menu(student_id)
+    await callback.message.answer(text, reply_markup=bookings_menu_keyboard(slot_ids))
+    await callback.answer()
+
+# ──────────────────────────────────────────────
+# ОТМЕНА КОНКРЕТНОЙ ЗАПИСИ
+# ──────────────────────────────────────────────
+@router.callback_query(BookingStates.bookings_menu, F.data.startswith("cancel_slot_"))
+async def cancel_specific_slot(callback: CallbackQuery, state: FSMContext):
+    slot_id = int(callback.data.split("_")[2])
+    student_id = await get_student_id(state)
+
+    result = await api("post", f"/slots/cancel_by_id/{slot_id}")
+
+    if "detail" in result:
+        await callback.answer("Не удалось отменить запись", show_alert=True)
+        return
+
+    text, slot_ids = await build_my_bookings_menu(student_id)
+    await callback.message.edit_text(text, reply_markup=bookings_menu_keyboard(slot_ids))
+    await callback.answer("Запись отменена ✓")
+
+
+# ──────────────────────────────────────────────
 # ГЛАВНОЕ МЕНЮ
 # ──────────────────────────────────────────────
-@router.callback_query(BookingStates.main_menu, F.data == "start_booking")
+@router.callback_query(F.data == "start_booking")
 async def start_booking(callback: CallbackQuery, state: FSMContext):
 
     branches = await api("get", "/branches/")
@@ -116,20 +185,6 @@ async def start_booking(callback: CallbackQuery, state: FSMContext):
         "Запись на практическое занятие:\nВыберите филиал где бы вы хотели пройти практическое занятие",
         reply_markup=branches_keyboard(branches)
     )
-    await callback.answer()
-
-
-@router.callback_query(BookingStates.main_menu, F.data == "cancel_booking")
-async def cancel_booking(callback: CallbackQuery, state: FSMContext):
-    student_id = await get_student_id(state)
-    result = await api("post", f"/slots/cancel/{student_id}")
-
-    if "detail" in result:
-        await callback.answer("У вас нет активной записи", show_alert=True)
-        return
-
-    await callback.message.answer("Запись отменена.")
-    await callback.message.answer(await build_main_menu_text(student_id), reply_markup=main_menu_keyboard())
     await callback.answer()
 
 
@@ -311,8 +366,13 @@ async def choose_time(callback: CallbackQuery, state: FSMContext):
         "student_id": data["student_id"]
     })
 
-    if "detail" in result:
+    error_detail = result.get("detail")
+    if error_detail == "Слот уже занят":
         await callback.answer("Этот слот уже заняли, выберите другое время", show_alert=True)
+        return
+    
+    elif error_detail == "Достигнут лимит записей (3)":
+        await callback.answer("Достигнут лимит записей (3шт)", show_alert=True)
         return
 
     slot = await api("get", f"/slots/{slot_id}")
@@ -333,6 +393,18 @@ async def choose_time(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
+
+async def set_main_menu(bot: Bot):
+    main_menu_commands = [
+        BotCommand(command="/start", description="Запуск бота"),
+        BotCommand(command="/menu", description="Главное меню"),
+    ]
+    
+    await bot.set_my_commands(
+        commands=main_menu_commands,
+        scope=BotCommandScopeAllPrivateChats()
+    )
+
 # ──────────────────────────────────────────────
 # ЗАПУСК
 # ──────────────────────────────────────────────
@@ -340,6 +412,7 @@ async def main():
     bot = Bot(token=TOKEN)
     dp = Dispatcher(storage=MemoryStorage())
     dp.include_router(router)
+    await set_main_menu(bot)  
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
