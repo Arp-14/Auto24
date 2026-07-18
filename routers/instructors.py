@@ -7,11 +7,12 @@ from database import get_db
 from models import Instructor, Slot
 from schemas import InstructorOut
 from .auth_simple import require_admin, create_session
+import os 
 
 router = APIRouter(prefix="/instructors", tags=["instructors"])
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-PHOTO_DIR = "photos"
+PHOTO_DIR = os.environ.get("PHOTO_DIR", "photos")
 os.makedirs(PHOTO_DIR, exist_ok=True)
 
 
