@@ -119,7 +119,7 @@ def update_instructor(
         full_path = os.path.join(PHOTO_DIR, filename)
         with open(full_path, "wb") as buffer:
             shutil.copyfileobj(photo.file, buffer)
-        instructor.photo_path = f"/photos/{filename}"
+        instructor.photo_path = f"photos/{filename}"
 
     db.commit()
     return {"message": "Обновлено"}
