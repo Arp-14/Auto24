@@ -219,6 +219,7 @@ async def show_branch_instructors(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
+
 async def send_instructor_card(message: Message, instructor: dict, index: int, total: int, as_new: bool):
     caption = (
         f"<b>{instructor['full_name']}</b>\n"
@@ -228,20 +229,19 @@ async def send_instructor_card(message: Message, instructor: dict, index: int, t
         f"🕹️ КПП: {instructor['transmission_type']}"
     )
     keyboard = instructor_card_keyboard(instructor["id"], index, total)
-    has_photo = os.path.exists(instructor["photo_path"])
+    photo_url = f"{API_URL}/{instructor['photo_path']}"  
 
     if as_new:
-        if has_photo:
-            await message.answer_photo(photo=FSInputFile(instructor["photo_path"]),
-                                       caption=caption, reply_markup=keyboard, parse_mode="HTML")
-        else:
+        try:
+            await message.answer_photo(photo=photo_url, caption=caption, reply_markup=keyboard, parse_mode="HTML")
+        except Exception:
             await message.answer(caption, reply_markup=keyboard, parse_mode="HTML")
         return
 
-    if has_photo:
-        media = InputMediaPhoto(media=FSInputFile(instructor["photo_path"]), caption=caption, parse_mode="HTML")
+    try:
+        media = InputMediaPhoto(media=photo_url, caption=caption, parse_mode="HTML")
         await message.edit_media(media=media, reply_markup=keyboard)
-    else:
+    except Exception:
         await message.edit_text(caption, reply_markup=keyboard, parse_mode="HTML")
 
 
