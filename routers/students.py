@@ -14,8 +14,7 @@ def identify(data: StudentIdentify, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Ключ не найден")
 
     # Если этот Telegram уже привязан к ДРУГОМУ ученику — не даём тихо упасть
-    # в UniqueViolation, а возвращаем понятную ошибку, которую бот покажет
-    # пользователю с просьбой обратиться к администратору.
+    # в UniqueViolation, а возвращаем понятную ошибку, которую бот покажет пользователю с просьбой обратиться к администратору.
     conflict = db.query(Student).filter(
         Student.telegram_id == data.telegram_id,
         Student.id != student.id

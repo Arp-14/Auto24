@@ -1,9 +1,10 @@
 import secrets
 from fastapi import Header, HTTPException, Depends
+import os
 
 SESSIONS: dict[str, dict] = {}
 
-ADMIN_PASSWORD = "2026"  # обязательно смени перед деплоем, лучше вынести в .env
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
 
 def create_session(role: str, user_id: int | None = None) -> str:
     token = secrets.token_urlsafe(24)

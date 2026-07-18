@@ -22,7 +22,7 @@ class InstructorOut(BaseModel):
 
 class SlotOut(BaseModel):
     id: int
-    instructor_id: int  # добавь эту строку
+    instructor_id: int 
     date: date
     time: time
     is_booked: bool
@@ -47,7 +47,7 @@ class StudentIdentify(BaseModel):
     telegram_id: str
 
 class RejectBooking(BaseModel):
-    message: str | None = None  # если None — используем дефолтное
+    message: str | None = None 
 
 class UpdateDefaultMessage(BaseModel):
     message: str

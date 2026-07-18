@@ -32,7 +32,6 @@ async def notify_student(telegram_id: str, text: str):
 
 
 # Заявки инструктора (доступно только самому инструктору)
-
 @router.get("/pending/{instructor_id}")
 def get_pending(instructor_id: int, db: Session = Depends(get_db), session: dict = Depends(require_instructor)):
     slots = db.query(Slot).filter(
@@ -198,8 +197,7 @@ def get_all_slots(instructor_id: int, week_start: dt.date, week_end: dt.date, db
     return result
 
 
-# ── Только для админа: студенты ──
-
+# Только для админа: студенты 
 @router.get("/students/all")
 def get_all_students(db: Session = Depends(get_db), admin: dict = Depends(require_admin)):
     students = db.query(Student).order_by(Student.id.desc()).all()
@@ -236,7 +234,6 @@ def delete_student(student_id: int, db: Session = Depends(get_db), admin: dict =
     student = db.query(Student).filter(Student.id == student_id).first()
     if not student:
         raise HTTPException(status_code=404, detail="Студент не найден")
-    # снимаем его брони вместо блокировки удаления ForeignKey-ошибкой
     db.query(Slot).filter(Slot.booked_by_student_id == student_id).update(
         {"booked_by_student_id": None, "status": "free", "is_booked": False}
     )

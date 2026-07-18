@@ -2,9 +2,9 @@ import os
 import shutil
 from fastapi import APIRouter, Depends, HTTPException, Form, File, UploadFile
 from sqlalchemy.orm import Session
-from passlib.context import CryptContext
+from passlib.context import CryptContext #type: ignore
 from database import get_db
-from models import Instructor
+from models import Instructor, Slot
 from schemas import InstructorOut
 from .auth_simple import require_admin, create_session
 
@@ -129,6 +129,9 @@ def delete_instructor(instructor_id: int, db: Session = Depends(get_db), admin: 
     instructor = db.query(Instructor).filter(Instructor.id == instructor_id).first()
     if not instructor:
         raise HTTPException(status_code=404, detail="Инструктор не найден")
+    
+    db.query(Slot).filter(Slot.instructor_id == instructor.id).delete()
+
     db.delete(instructor)
     db.commit()
-    return {"message": "Удалён"}
+    return {"message": "Удалён вместе с его расписанием"}

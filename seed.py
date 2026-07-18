@@ -1,32 +1,21 @@
-"""
-Запусти этот файл один раз чтобы создать БД в PostgreSQL и заполнить тестовыми данными.
-python seed.py
-"""
 import datetime
-# Импортируем engine, SessionLocal и Base напрямую из вашего файла database
 from database import engine, SessionLocal, Base
 from models import Branch, Instructor, Slot, Student
 from passlib.context import CryptContext
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-DEFAULT_INSTRUCTOR_PASSWORD = "instructor2024"  # смени после первого входа через панель
+DEFAULT_INSTRUCTOR_PASSWORD = "instructor2024"
 
-# Вместо несуществующей функции init_db() вызываем встроенный метод SQLAlchemy.
-# Он автоматически создаст все таблицы в PostgreSQL, если их еще нет.
 print("Удаление старых таблиц...")
 Base.metadata.drop_all(bind=engine)
 
 print("Создание таблиц в PostgreSQL...")
 Base.metadata.create_all(bind=engine)
 
-# Открываем сессию
 db = SessionLocal()
 
 try:
     print("Очистка старых данных...")
-    # ... дальше код идет без изменений, начиная с db.query(Slot).delete()
-    # ВАЖНО: Удаляем в строгом порядке из-за ограничений Foreign Key в PostgreSQL
-    # Сначала удаляем самые зависимые таблицы, затем главные
     db.query(Slot).delete()
     db.query(Instructor).delete()
     db.query(Branch).delete()
@@ -37,7 +26,7 @@ try:
     b1 = Branch(name="Бибирево")
     b2 = Branch(name="Тимирязевская")
     db.add_all([b1, b2])
-    db.commit()  # Коммитим, чтобы у b1 и b2 появились id (PostgreSQL сгенерирует их через SERIAL)
+    db.commit() 
 
     print("Создание инструкторов...")
     hashed_pw = pwd_context.hash(DEFAULT_INSTRUCTOR_PASSWORD)
@@ -60,7 +49,6 @@ try:
     today = datetime.date.today()
     times = [datetime.time(8, 0), datetime.time(10, 0), datetime.time(12, 0), datetime.time(15, 0), datetime.time(17, 0)]
 
-    # PostgreSQL эффективно обрабатывает массовую вставку bulk
     slots_to_add = []
     for instructor in [i1, i2, i3, i4]:
         for day_offset in range(14):
@@ -72,9 +60,8 @@ try:
     db.commit()
 
     print("Создание тестового ученика...")
-    # Исправил ключ в объекте, чтобы он совпадал с текстом в print
     test_key = "H455h@425J4502"
-    student = Student(telegram_id=None, full_name="Магомед", identification_key=test_key,
+    student = Student(telegram_id=None, full_name="Владимир Вольфович", identification_key=test_key,
                        total_lessons=16, used_lessons=10)
     db.add(student)
     db.commit()
@@ -84,7 +71,7 @@ try:
     print(f"Пароль всех сид-инструкторов: {DEFAULT_INSTRUCTOR_PASSWORD} (ID инструкторов: 1-4)")
 
 except Exception as e:
-    db.rollback() # Если упадет на Foreign Key или связи — откатываем транзакцию
+    db.rollback()
     print(f"Ошибка при заполнении базы: {e}")
 
 finally:

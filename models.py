@@ -19,8 +19,8 @@ class Instructor(Base):
     car_model = Column(String)
     transmission_type = Column(String)
     max_weeks_ahead = Column(Integer, default=2)
-    default_reject_message = Column(String, default="К сожалению, вынужден отменить занятие. Приношу извинения.")  # новое
-    password_hash = Column(String, nullable=True)  # для входа инструктора в свою панель
+    default_reject_message = Column(String, default="К сожалению, вынужден отменить занятие. Приношу извинения.") 
+    password_hash = Column(String, nullable=True) 
     branch = relationship("Branch", back_populates="instructors")
 
 class Student(Base):
