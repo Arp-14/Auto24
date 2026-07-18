@@ -77,7 +77,7 @@ def create_instructor(
     instructor = Instructor(
         full_name=full_name,
         branch_id=branch_id,
-        photo_path=full_path,
+        photo_path=f"photos/{filename}",
         driving_since=driving_since,
         instructor_since=instructor_since,
         car_model=car_model,
@@ -119,7 +119,7 @@ def update_instructor(
         full_path = os.path.join(PHOTO_DIR, filename)
         with open(full_path, "wb") as buffer:
             shutil.copyfileobj(photo.file, buffer)
-        instructor.photo_path = full_path
+        instructor.photo_path = f"/photos/{filename}"
 
     db.commit()
     return {"message": "Обновлено"}
