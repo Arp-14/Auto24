@@ -25,7 +25,7 @@ async function loadInstructors() {
       <div style="display:flex; align-items:center; gap:14px;">
         <img class="instructor-photo" src="/${i.photo_path}" onerror="this.style.opacity=0.3" />
         <div>
-          <div class="card-title">${escapeHtml(i.full_name)}</div>
+          <div class="card-title">id: ${escapeHtml(i.id)}, ${escapeHtml(i.full_name)}</div>
           <div class="card-sub">
             ${escapeHtml(i.car_model)} · ${(i.transmission_type === "automatic" || i.transmission_type === "автомат") ? "АКПП" : "МКПП"} ·
             отделение: ${branch ? escapeHtml(branch.name) : "не указано"}
