@@ -222,9 +222,10 @@ async def show_branch_instructors(callback: CallbackQuery, state: FSMContext):
 async def send_instructor_card(message: Message, instructor: dict, index: int, total: int, as_new: bool):
     caption = (
         f"<b>{instructor['full_name']}</b>\n"
-        f"Водительский стаж с {instructor['driving_since']}г.\n"
-        f"Стаж инструктора с {instructor['instructor_since']}г.\n"
-        f"Машина: {instructor['car_model']} ({instructor['transmission_type']})"
+        f"⚡ Водительский стаж с {instructor['driving_since']}г.\n"
+        f"⚡ Стаж инструктора с {instructor['instructor_since']}г.\n"
+        f"🚗 Машина: {instructor['car_model']}\n)"
+        f"🕹️ КПП: {instructor['transmission_type']}"
     )
     keyboard = instructor_card_keyboard(instructor["id"], index, total)
     has_photo = os.path.exists(instructor["photo_path"])
