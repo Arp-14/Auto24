@@ -224,7 +224,7 @@ async def send_instructor_card(message: Message, instructor: dict, index: int, t
         f"<b>{instructor['full_name']}</b>\n"
         f"⚡ Водительский стаж с {instructor['driving_since']}г.\n"
         f"⚡ Стаж инструктора с {instructor['instructor_since']}г.\n"
-        f"🚗 Машина: {instructor['car_model']}\n)"
+        f"🚗 Машина: {instructor['car_model']}\n"
         f"🕹️ КПП: {instructor['transmission_type']}"
     )
     keyboard = instructor_card_keyboard(instructor["id"], index, total)
